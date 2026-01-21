@@ -8,8 +8,8 @@ st.set_page_config(page_title="Trợ lý AI của anh Đạt", page_icon="🤖")
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
+    model = genai.GenerativeModel('models/gemini-1.5-flash')
+
     st.error("Anh Đạt ơi, hãy kiểm tra lại mục Secrets trên Streamlit nhé!")
     st.stop()
 
