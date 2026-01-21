@@ -1,22 +1,20 @@
 import streamlit as st
 import google.generativeai as genai
 
-# Thiết lập cấu hình trang
 st.set_page_config(page_title="Trợ lý AI của anh Đạt", page_icon="🤖")
 
-# Lấy khóa bí mật từ mục Secrets anh đã dán trên Streamlit
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # Em đã cập nhật dòng này để hết lỗi 404 cho anh
+    model = genai.GenerativeModel('gemini-2.0-flash-exp')
 else:
-    st.error("Anh Đạt ơi, hãy kiểm tra lại mục Secrets trên Streamlit nhé!")
+    st.error("Anh Đạt ơi, hãy kiểm tra mục Secrets nhé!")
     st.stop()
 
 st.title("🤖 Trợ lý AI - Anh Đạt Digital")
 st.write("Chào mừng anh/chị! Em là trợ lý thông minh của cửa hàng anh Đạt.")
 
-# Ô nhập câu hỏi
 user_input = st.text_input("Anh/Chị cần tư vấn gì về sản phẩm số không ạ?")
 
 if st.button("Hỏi Trợ lý"):
@@ -29,4 +27,4 @@ if st.button("Hỏi Trợ lý"):
             except Exception as e:
                 st.error(f"Lỗi rồi anh ơi: {e}")
     else:
-        st.warning("Anh/Chị nhập câu hỏi trước khi nhấn nút nhé!")
+        st.warning("Anh/Chị nhập câu hỏi trước nhé!")
