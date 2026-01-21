@@ -1,10 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 import requests
-import json
+import time
 
 # ============================================
-# CẤU HÌNH
+# CẤU HÌNH TRANG
 # ============================================
 st.set_page_config(
     page_title="Trợ lý AI của anh Đạt",
@@ -12,245 +12,384 @@ st.set_page_config(
     layout="wide"
 )
 
-# CSS
+# ============================================
+# CUSTOM CSS
+# ============================================
 st.markdown("""
 <style>
-    .main { padding: 20px; }
-    .stButton > button { 
-        background: linear-gradient(135deg, #667eea, #764ba2);
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        padding: 12px 24px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    
+    .api-success { color: green; font-weight: bold; }
+    .api-error { color: red; font-weight: bold; }
+    
+    .api-test-box {
+        padding: 15px;
         border-radius: 10px;
+        margin: 10px 0;
+        border: 2px solid #e0e0e0;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================
-# HÀM KHỞI TẠO ĐÃ FIX
+# HÀM KIỂM TRA API KEY
 # ============================================
-def initialize_app():
-    """Khởi tạo ứng dụng với xử lý lỗi đầy đủ"""
-    
-    # BƯỚC 1: Tìm API key
-    api_key = None
-    key_sources = []
-    
-    # Nguồn 1: Streamlit secrets
-    if "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
-        key_sources.append("Streamlit Secrets")
-    
-    # Nguồn 2: Biến môi trường
-    if not api_key:
-        import os
-        env_key = os.getenv("GEMINI_API_KEY")
-        if env_key:
-            api_key = env_key
-            key_sources.append("Environment Variables")
-    
-    # Nguồn 3: Nhập thủ công qua UI
-    if not api_key:
-        with st.sidebar:
-            st.error("❌ Chưa tìm thấy API Key")
-            manual_key = st.text_input("Nhập API Key:", type="password")
-            if manual_key:
-                api_key = manual_key
-                key_sources.append("Manual Input")
-    
-    if not api_key:
-        st.error("""
-        ## ❌ CHƯA CÓ API KEY!
-        
-        **Vui lòng cung cấp Gemini API Key:**
-        
-        1. **Lấy API Key:** [Google AI Studio](https://makersuite.google.com/app/apikey)
-        2. **Thêm vào:** `.streamlit/secrets.toml`
-        ```toml
-        GEMINI_API_KEY = "AIzaSyBx6-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        ```
-        
-        3. **Hoặc nhập thủ công** trong sidebar
-        """)
-        return None, None
-    
-    # BƯỚC 2: Kiểm tra API key
-    with st.spinner("🔍 Kiểm tra API Key..."):
+def test_gemini_api_key(api_key):
+    """Kiểm tra API key có hợp lệ không"""
+    try:
+        # Test trực tiếp với Google API
         test_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
-        try:
-            response = requests.get(test_url, timeout=10)
+        response = requests.get(test_url, timeout=10)
+        
+        if response.status_code == 200:
+            models = response.json().get('models', [])
+            available_models = [model['name'] for model in models]
+            return True, "✅ API Key hợp lệ", available_models
+        elif response.status_code == 403:
+            return False, "❌ API Key không có quyền truy cập", []
+        elif response.status_code == 404:
+            return False, "❌ API Key không tồn tại", []
+        else:
+            return False, f"❌ Lỗi {response.status_code}: {response.text[:100]}", []
             
-            if response.status_code != 200:
-                st.error(f"""
-                ## ❌ API KEY KHÔNG HỢP LỆ!
-                
-                **Lỗi {response.status_code}:**
-                - 403: API Key không có quyền
-                - 404: API Key không tồn tại
-                - 400: API Key sai định dạng
-                
-                **Giải pháp:**
-                1. Tạo API Key mới tại [Google AI Studio](https://makersuite.google.com/)
-                2. Bật Gemini API trong [Google Cloud Console](https://console.cloud.google.com/)
-                3. Kiểm tra billing account
-                """)
-                return None, None
-                
-        except Exception as e:
-            st.error(f"Lỗi kết nối: {str(e)}")
-            return None, None
-    
-    # BƯỚC 3: Khởi tạo model
+    except requests.exceptions.RequestException as e:
+        return False, f"❌ Lỗi kết nối: {str(e)}", []
+    except Exception as e:
+        return False, f"❌ Lỗi không xác định: {str(e)}", []
+
+# ============================================
+# HÀM LẤY DANH SÁCH MODEL
+# ============================================
+def get_available_models(api_key):
+    """Lấy danh sách model có sẵn"""
     try:
         genai.configure(api_key=api_key)
+        models = genai.list_models()
         
-        # Model hoạt động CHẮC CHẮN (đã test)
-        working_models = [
-            'gemini-1.5-pro',      # ✅ Hoạt động
-            'gemini-1.5-flash',    # ✅ Hoạt động
-            'gemini-pro',          # ✅ Hoạt động (alias)
+        available_models = []
+        for model in models:
+            if 'generateContent' in model.supported_generation_methods:
+                available_models.append(model.name)
+        
+        return available_models
+    except Exception as e:
+        st.error(f"Không thể lấy danh sách model: {str(e)}")
+        return []
+
+# ============================================
+# HÀM KHỞI TẠO MODEL
+# ============================================
+def initialize_gemini_model(api_key):
+    """Khởi tạo Gemini model với API key"""
+    try:
+        # Cấu hình API
+        genai.configure(api_key=api_key)
+        
+        # Danh sách model ưu tiên (theo thứ tự thử)
+        priority_models = [
+            'models/gemini-1.5-pro',      # Format đầy đủ
+            'models/gemini-1.5-flash',    # Format đầy đủ
+            'gemini-1.5-pro',             # Format ngắn
+            'gemini-1.5-flash',           # Format ngắn
+            'models/gemini-pro',          # Model cũ
+            'gemini-pro',                 # Model cũ ngắn
         ]
         
-        model = None
-        selected_model = None
-        
-        for model_name in working_models:
+        # Thử từng model
+        for model_name in priority_models:
             try:
+                st.info(f"🔍 Đang thử model: {model_name}")
                 model = genai.GenerativeModel(model_name)
-                # Test nhẹ
-                test_response = model.generate_content("Hi", max_output_tokens=10)
-                if test_response.text:
-                    selected_model = model_name
-                    st.success(f"✅ Đã kết nối với: {model_name}")
-                    break
-            except:
+                
+                # Test với prompt đơn giản
+                response = model.generate_content(
+                    "Hello",
+                    generation_config={
+                        "max_output_tokens": 10,
+                        "temperature": 0.1
+                    }
+                )
+                
+                if response and hasattr(response, 'text'):
+                    st.success(f"✅ Đã kết nối thành công với: {model_name}")
+                    return model, model_name
+                    
+            except Exception as model_error:
                 continue
         
-        if not model:
-            st.error("Không thể kết nối với bất kỳ model nào")
-            return None, None
-        
-        return model, api_key
+        return None, "Không thể kết nối với bất kỳ model nào"
         
     except Exception as e:
-        st.error(f"Lỗi khởi tạo model: {str(e)}")
-        return None, None
+        return None, f"Lỗi khởi tạo: {str(e)}"
 
 # ============================================
 # GIAO DIỆN CHÍNH
 # ============================================
-st.title("🤖 Trợ lý AI - Anh Đạt Digital")
-st.markdown("**Em đã sẵn sàng tư vấn cho anh Đạt rồi đây!**")
+st.title("🔧 **Cấu hình Gemini API**")
+st.markdown("### Bước 1: Kiểm tra và cấu hình API Key")
 
-# Khởi tạo app
+# Khởi tạo session state
+if 'api_key_valid' not in st.session_state:
+    st.session_state.api_key_valid = False
+if 'api_key' not in st.session_state:
+    st.session_state.api_key = ""
 if 'model' not in st.session_state:
-    st.session_state.model, st.session_state.api_key = initialize_app()
+    st.session_state.model = None
 
-# Hiển thị trạng thái
-with st.sidebar:
-    st.markdown("### ⚙️ Trạng thái")
+# ============================================
+# PHẦN 1: NHẬP VÀ KIỂM TRA API KEY
+# ============================================
+with st.expander("🔑 **Nhập API Key của bạn**", expanded=True):
+    col1, col2 = st.columns([3, 1])
     
-    if st.session_state.model:
-        st.success("✅ Đã kết nối API")
-        
-        if st.button("🔄 Khởi tạo lại"):
-            st.session_state.model, st.session_state.api_key = initialize_app()
-            st.rerun()
-    else:
-        st.error("❌ Chưa kết nối")
-        
-        if st.button("🔗 Thử kết nối lại"):
-            st.session_state.model, st.session_state.api_key = initialize_app()
-            st.rerun()
+    with col1:
+        api_key_input = st.text_input(
+            "Gemini API Key:",
+            value=st.session_state.api_key,
+            type="password",
+            placeholder="Nhập API Key bắt đầu với AIzaSy...",
+            help="Lấy API key tại: https://makersuite.google.com/app/apikey"
+        )
     
-    st.markdown("---")
-    st.markdown("### 💡 Câu hỏi mẫu")
-    
-    sample_questions = [
-        "Chiến lược marketing online?",
-        "Phong thủy phòng làm việc?",
-        "Cách tăng doanh thu?",
-        "Làm content viral?",
-    ]
-    
-    for q in sample_questions:
-        if st.button(q, key=f"sample_{q}"):
-            st.session_state.sample_question = q
-            st.rerun()
+    with col2:
+        if st.button("🧪 **Kiểm tra API Key**", use_container_width=True):
+            if api_key_input:
+                with st.spinner("Đang kiểm tra API Key..."):
+                    time.sleep(1)
+                    
+                    # Kiểm tra API key
+                    is_valid, message, models = test_gemini_api_key(api_key_input)
+                    
+                    if is_valid:
+                        st.session_state.api_key = api_key_input
+                        st.session_state.api_key_valid = True
+                        st.success(message)
+                        
+                        # Hiển thị model có sẵn
+                        if models:
+                            st.markdown("**📋 Model có sẵn:**")
+                            for m in models[:5]:  # Hiển thị 5 model đầu
+                                st.code(m)
+                    else:
+                        st.error(message)
+                        st.session_state.api_key_valid = False
+            else:
+                st.warning("Vui lòng nhập API Key")
 
-# Chat interface
-if st.session_state.model:
-    # Khởi tạo chat history
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
+# ============================================
+# PHẦN 2: HƯỚNG DẪN LẤY API KEY
+# ============================================
+with st.expander("📖 **Hướng dẫn lấy API Key**"):
+    st.markdown("""
+    ### **Các bước lấy Gemini API Key:**
     
-    # Hiển thị chat
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    1. **Truy cập:** [Google AI Studio](https://makersuite.google.com/app/apikey)
+    2. **Đăng nhập** bằng tài khoản Google
+    3. **Tạo API Key mới:**
+       - Click "Create API Key"
+       - Chọn "Create API key in new project"
+       - Copy API Key (bắt đầu với `AIzaSy...`)
     
-    # Input
-    prompt = st.chat_input("Anh muốn hỏi về phong thủy")
+    4. **Kích hoạt Gemini API trong Google Cloud (QUAN TRỌNG):**
+       - Truy cập: [Google Cloud Console](https://console.cloud.google.com/)
+       - Chọn dự án của bạn
+       - Tìm "Gemini API"
+       - Click "ENABLE"
     
-    # Xử lý sample question
-    if 'sample_question' in st.session_state:
-        prompt = st.session_state.sample_question
-        del st.session_state.sample_question
+    ### **🔍 Kiểm tra API Key:**
+    - API Key hợp lệ: `AIzaSyBx6-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+    - Độ dài: ~39 ký tự
+    - Bắt đầu với: `AIzaSy`
     
-    if prompt:
-        # Thêm vào history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # Hiển thị
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Tạo response
-        with st.chat_message("assistant"):
-            with st.spinner("Đang suy nghĩ..."):
-                try:
-                    response = st.session_state.model.generate_content(prompt)
-                    response_text = response.text
-                    
-                    st.markdown(response_text)
-                    
-                    # Thêm vào history
-                    st.session_state.messages.append({
-                        "role": "assistant", 
-                        "content": response_text
-                    })
-                    
-                except Exception as e:
-                    error_msg = f"Lỗi: {str(e)}"
-                    st.error(error_msg)
-                    
-                    # Thêm lỗi vào history
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": f"❌ {error_msg}"
-                    })
-else:
-    # Hiển thị hướng dẫn nếu chưa kết nối
-    st.warning("""
-    ## ⚠️ CẦN CẤU HÌNH API KEY
-    
-    **Để sử dụng trợ lý AI, vui lòng:**
-    
-    1. **Lấy API Key tại:** [Google AI Studio](https://makersuite.google.com/app/apikey)
-    2. **Thêm vào file `.streamlit/secrets.toml`:**
-    ```toml
-    GEMINI_API_KEY = "AIzaSyBx6-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    ```
-    3. **Hoặc nhập thủ công** trong sidebar bên trái
-    4. **Nhấn nút "Thử kết nối lại"** trong sidebar
-    
-    **🔑 API Key hợp lệ phải:**
-    - Bắt đầu với `AIzaSy`
-    - Dài khoảng 39 ký tự
-    - Được tạo từ Google AI Studio
-    - Đã bật Gemini API trong Google Cloud Console
+    ### **⚠️ Lỗi thường gặp:**
+    - **API Key không tồn tại:** Tạo API Key mới
+    - **Chưa kích hoạt Gemini API:** Enable API trong Google Cloud
+    - **Hết hạn API Key:** Tạo lại API Key
     """)
 
-# Footer
+# ============================================
+# PHẦN 3: KHỞI TẠO MODEL
+# ============================================
+if st.session_state.api_key_valid:
+    st.markdown("---")
+    st.markdown("### **Bước 2: Khởi tạo Model**")
+    
+    if st.button("🚀 **Khởi tạo Gemini Model**", type="primary"):
+        with st.spinner("Đang khởi tạo model..."):
+            model, message = initialize_gemini_model(st.session_state.api_key)
+            
+            if model:
+                st.session_state.model = model
+                st.success(f"✅ {message}")
+                
+                # Test chat đơn giản
+                st.markdown("### **Bước 3: Test chat đơn giản**")
+                test_prompt = "Xin chào, bạn có thể giới thiệu về mình không?"
+                
+                with st.spinner("Đang test chat..."):
+                    try:
+                        response = model.generate_content(test_prompt)
+                        st.markdown("**🤖 Trả lời test:**")
+                        st.info(response.text)
+                        
+                        # Lưu vào secrets để dùng sau
+                        st.markdown("### **✅ Cấu hình thành công!**")
+                        st.markdown("""
+                        **Bạn đã sẵn sàng sử dụng Gemini API:**
+                        1. API Key: ✅ Hợp lệ
+                        2. Model: ✅ Đã kết nối
+                        3. Chat: ✅ Hoạt động
+                        
+                        **Để sử dụng trong ứng dụng khác, thêm vào `.streamlit/secrets.toml`:**
+                        ```toml
+                        GEMINI_API_KEY = "YOUR_API_KEY_HERE"
+                        ```
+                        """)
+                        
+                    except Exception as e:
+                        st.error(f"Lỗi khi test chat: {str(e)}")
+            else:
+                st.error(f"❌ {message}")
+
+# ============================================
+# PHẦN 4: TEST TRỰC TIẾP VỚI API
+# ============================================
 st.markdown("---")
-st.caption("Anh Đạt Digital • © 2024 • Powered by Google Gemini AI")
+st.markdown("### **🛠️ Test API trực tiếp**")
+
+test_key = st.text_input("Test API Key (hoặc dùng key ở trên):", 
+                         value=st.session_state.api_key if st.session_state.api_key else "",
+                         type="password")
+
+if st.button("🔍 **Test API trực tiếp**"):
+    if test_key:
+        with st.spinner("Đang test kết nối API..."):
+            # Test với requests trực tiếp
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models?key={test_key}"
+                response = requests.get(url, timeout=10)
+                
+                st.markdown("**📊 Kết quả kiểm tra:**")
+                
+                if response.status_code == 200:
+                    st.success("✅ Kết nối API thành công!")
+                    
+                    # Parse response
+                    data = response.json()
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric("Status Code", response.status_code)
+                        st.metric("Số model", len(data.get('models', [])))
+                    
+                    with col2:
+                        st.metric("API Key hợp lệ", "✅ Có")
+                        st.metric("Có thể generate", "✅ Có")
+                    
+                    # Hiển thị vài model
+                    st.markdown("**📋 Một số model có sẵn:**")
+                    models = data.get('models', [])
+                    for i, model in enumerate(models[:3]):
+                        st.code(f"{model.get('name', 'Unknown')} - {model.get('displayName', 'No name')}")
+                    
+                else:
+                    st.error(f"❌ Lỗi {response.status_code}")
+                    st.text(f"Response: {response.text[:200]}")
+                    
+            except Exception as e:
+                st.error(f"❌ Lỗi kết nối: {str(e)}")
+    else:
+        st.warning("Vui lòng nhập API Key để test")
+
+# ============================================
+# PHẦN 5: TRỢ LÝ CHAT ĐƠN GIẢN
+# ============================================
+if st.session_state.model:
+    st.markdown("---")
+    st.markdown("## 💬 **Trợ lý Chat Demo**")
+    
+    # Chat interface đơn giản
+    if 'chat_messages' not in st.session_state:
+        st.session_state.chat_messages = []
+    
+    # Hiển thị chat history
+    for msg in st.session_state.chat_messages:
+        if msg["role"] == "user":
+            st.markdown(f"**👤 Bạn:** {msg['content']}")
+        else:
+            st.markdown(f"**🤖 AI:** {msg['content']}")
+    
+    # Input chat
+    user_input = st.text_input("Nhập câu hỏi của bạn:", key="chat_input")
+    
+    if st.button("Gửi câu hỏi") and user_input:
+        st.session_state.chat_messages.append({"role": "user", "content": user_input})
+        
+        with st.spinner("AI đang suy nghĩ..."):
+            try:
+                response = st.session_state.model.generate_content(user_input)
+                ai_response = response.text if hasattr(response, 'text') else "Không có phản hồi"
+                st.session_state.chat_messages.append({"role": "assistant", "content": ai_response})
+                st.rerun()
+            except Exception as e:
+                st.error(f"Lỗi: {str(e)}")
+
+# ============================================
+# PHẦN 6: XỬ LÝ LỖI PHỔ BIẾN
+# ============================================
+with st.expander("🔧 **Khắc phục lỗi phổ biến**"):
+    st.markdown("""
+    ### **❌ Lỗi "Không thể kết nối với bất kỳ model nào"**
+    
+    **Nguyên nhân và giải pháp:**
+    
+    1. **API Key không hợp lệ:**
+       - Kiểm tra lại API Key
+       - Tạo API Key mới tại [Google AI Studio](https://makersuite.google.com/app/apikey)
+    
+    2. **Chưa kích hoạt Gemini API trong Google Cloud:**
+       - Truy cập [Google Cloud Console](https://console.cloud.google.com/)
+       - Tìm "Gemini API"
+       - Click **ENABLE**
+    
+    3. **API Key hết hạn hoặc bị thu hồi:**
+       - Tạo API Key mới
+       - Kiểm tra trong [Google Cloud API Dashboard](https://console.cloud.google.com/apis/dashboard)
+    
+    4. **Tài khoản chưa được cấp quyền:**
+       - Đảm bảo tài khoản có quyền truy cập Gemini API
+       - Kiểm tra billing account
+    
+    5. **Quota hết:**
+       - Kiểm tra quota tại [Google Cloud Quotas](https://console.cloud.google.com/iam-admin/quotas)
+       - Nâng cấp tài khoản nếu cần
+    
+    ### **🛠️ Cách test nhanh:**
+    
+    **Command Line Test:**
+    ```bash
+    curl "https://generativelanguage.googleapis.com/v1beta/models?key=YOUR_API_KEY"
+    ```
+    
+    **Nếu thành công:** Sẽ thấy danh sách model
+    **Nếu lỗi:** Kiểm tra API Key và quyền truy cập
+    
+    ### **📞 Hỗ trợ:**
+    - [Google AI Support](https://developers.google.com/studio/support)
+    - [Gemini API Documentation](https://ai.google.dev/docs)
+    - [Google Cloud Support](https://cloud.google.com/support)
+    """)
+
+# ============================================
+# FOOTER
+# ============================================
+st.markdown("---")
+st.caption("🔧 **Gemini API Configuration Tool** • Anh Đạt Digital • © 2024")
