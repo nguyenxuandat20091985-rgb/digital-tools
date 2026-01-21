@@ -9,8 +9,8 @@ if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
     # EM ĐÃ SỬA DÒNG NÀY (Bỏ chữ models/ đi)
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
+ model = genai.GenerativeModel('gemini-1.5-flash')
+
     st.error("Lỗi: Không tìm thấy API Key trong Secrets!")
     st.stop()
 
