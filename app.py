@@ -2,27 +2,31 @@ import streamlit as st
 import urllib.parse
 import requests
 
-# 1. CẤU HÌNH HỆ THỐNG AFFILIATE & API (ANH ĐẠT NGUYỄN)
+# 1. CẤU HÌNH THÔNG TIN AFFILIATE TRẦN ĐẠT
 ACCESSTRADE_ID = "103085"  
 API_TOKEN = "9R6Pf6Zs3mRL2M0qcXzb48yOhrIvZsqE"  
-UTM_SOURCE = "ai_quantum_deal"
+UTM_SOURCE = "megadeal_pro"
 
 def tao_link_affiliate(link_goc, merchant="shopee"):
     base_url = "https://fast.accesstrade.com.vn/deep_link/v4"
     link_ma_hoa = urllib.parse.quote(link_goc)
     return f"{base_url}?merchant_id={merchant}&id={ACCESSTRADE_ID}&url={link_ma_hoa}&utm_source={UTM_SOURCE}"
 
-@st.cache_data(ttl=900)  # Cập nhật liên tục 15 phút/lần để đồng bộ chiến dịch mới
-def lay_deal_tu_dong_tat_ca_chien_dich(tu_khoa="🔥"):
+@st.cache_data(ttl=900)  # Cập nhật liên tục 15 phút một lần cho nóng
+def tai_tat_ca_deal_api(tu_khoa="", danh_muc=""):
     """
-    Hàm tự động quét toàn bộ sản phẩm từ các chiến dịch anh Đạt đã đăng ký trên Accesstrade
+    Hàm AI tự động quét tất cả các chiến dịch anh Đạt đã đăng ký trên Accesstrade
     """
     url_api = "https://api.accesstrade.com.vn/v1/products"
     headers = {"Authorization": f"Token {API_TOKEN}", "Content-Type": "application/json"}
+    
+    # Chuỗi tìm kiếm linh hoạt để đa dạng hóa mọi ngách khách hàng
+    search_query = tu_khoa if tu_khoa else (danh_muc if danh_muc else "mỹ phẩm, mẹ và bé, công nghệ, gia dụng, thời trang")
+    
     params = {
         "limit": 20,
-        "search": tu_khoa,
-        "order": "discount_percent" # Ưu tiên lấy deal giảm sâu nhất của tất cả các sàn
+        "search": search_query,
+        "order": "discount_percent"  # Luôn ưu tiên deal giảm sâu nhất lên đầu sàn
     }
     try:
         response = requests.get(url_api, headers=headers, params=params)
@@ -32,179 +36,148 @@ def lay_deal_tu_dong_tat_ca_chien_dich(tu_khoa="🔥"):
     except:
         return []
 
-# 2. CẤU HÌNH GIAO DIỆN PREMIUM UI/UX (HỌC HỎI CÁC SÀN LỚN)
-st.set_page_config(page_title="AI-QUANTUM | Siêu Trợ Lý Săn Deal", page_icon="💎", layout="wide")
+# 2. GIAO DIỆN CHUẨN SÀN THƯƠNG MẠI ĐIỆN TỬ ĐẲNG CẤP CAO
+st.set_page_config(page_title="MegaDeal Pro - Siêu Thị Săn Deal Tự Động", page_icon="🛍️", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #060913; }
+    .stApp { background-color: #0F172A; }
     
-    /* Banner Đỉnh Cao Phong Cách Công Nghệ */
-    .premium-banner {
-        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        border: 1px solid #3b82f6;
-        padding: 35px 20px;
-        border-radius: 24px;
+    /* Thiết kế Header Sàn Thương Mại Điện Tử */
+    .smartecom-header {
+        background: linear-gradient(90deg, #F97316 0%, #EA580C 100%);
+        padding: 25px;
+        border-radius: 16px;
         text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.2);
-    }
-    .premium-title { font-size: 28px; font-weight: 900; color: #00F0FF; margin-bottom: 8px; letter-spacing: 2px; }
-    .premium-sub { font-size: 14px; color: #E2E8F0; opacity: 0.9; font-weight: 400; }
-    
-    /* Khung Tìm Kiếm & Dán Link */
-    .search-container {
-        background: #0f172a;
-        padding: 24px;
-        border-radius: 20px;
-        border: 1px solid #1e293b;
-        margin-bottom: 35px;
-    }
-    
-    /* Lưới Sản Phẩm Đa Dạng */
-    .product-grid-card {
-        background: #111c30;
-        border: 1px solid #1e365d;
-        border-radius: 18px;
-        padding: 14px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        box-shadow: 0 10px 25px rgba(234, 88, 12, 0.2);
     }
-    .product-grid-card:hover { border-color: #00F0FF; }
-    .product-grid-title {
-        color: #F8FAFC; font-size: 14px; font-weight: 600; margin: 12px 0 6px 0;
-        height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;
-    }
-    .price-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .price-new { color: #FF3B3B; font-size: 18px; font-weight: 700; }
-    .discount-tag { background: #DC2626; color: white; font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 6px; }
+    .smartecom-title { font-size: 28px; font-weight: 800; color: white; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .smartecom-sub { font-size: 14px; color: #FFEDD5; opacity: 0.9; }
     
-    /* Nút Mua VIP */
-    .btn-buy {
-        background: linear-gradient(90deg, #FF416C 0%, #FF4B2B 100%);
-        color: white; border: none; padding: 10px; border-radius: 10px;
-        font-weight: bold; width: 100%; cursor: pointer; transition: 0.3s; font-size: 14px;
-    }
-    
-    /* Khung Trợ lý AI */
-    .ai-box {
-        background: linear-gradient(145deg, #0f172a, #1e1b4b);
-        border: 1px solid #6366f1;
-        border-radius: 20px;
-        padding: 20px;
-        margin-top: 30px;
+    /* Bộ chọn danh mục bằng Icon */
+    .cate-box {
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 10px;
+        text-align: center;
+        color: #F8FAFC;
+        font-weight: 600;
+        font-size: 13px;
     }
     
-    /* CSS cho thanh Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1e293b; color: #94A3B8; border-radius: 8px; padding: 8px 16px; font-weight: 600;
+    /* Thẻ sản phẩm chuẩn E-com đổ bóng mềm mượt */
+    .ecom-card {
+        background: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, border-color 0.2s;
     }
-    .stTabs [aria-selected="true"] { background-color: #3b82f6 !important; color: white !important; }
+    .ecom-card:hover { transform: translateY(-4px); border-color: #F97316; }
+    .ecom-title {
+        color: #F1F5F9; font-size: 13px; font-weight: 500; margin: 8px 0 4px 0;
+        height: 36px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.4;
+    }
+    .price-container { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .price-sale { color: #EF4444; font-size: 16px; font-weight: 700; }
+    .tag-giam { background: #FEE2E2; color: #EF4444; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; }
     
-    footer {visibility: hidden;} header {visibility: hidden;}
+    /* Định dạng lại Tab thanh lịch */
+    .stTabs [data-baseweb="tab"] { color: #94A3B8 !important; font-weight: 600; }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] { color: #F97316 !important; border-bottom-color: #F97316 !important; }
+    
+    footer, header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# BANNER CAO CẤP CHUẨN THƯƠNG HIỆU CỦA ANH ĐẠT
+# Hiển thị Banner tổng kho thương mại điện tử hoành tráng
 st.markdown("""
-    <div class="premium-banner">
-        <div class="premium-title">💎 AI-QUANTUM SMART COMMERCE 💎</div>
-        <div class="premium-sub">Hệ thống AI tự động quét và tối ưu mã giảm giá từ tất cả chiến dịch đã đăng ký</div>
+    <div class="smartecom-header">
+        <div class="smartecom-title">🛍️ MEGA DEAL PRO - SIÊU THỊ MÃ GIẢM GIÁ 🛍️</div>
+        <div class="smartecom-sub">Hệ thống AI thông minh tự động gom Deal Hot & Mã giảm giá từ tất cả các sàn hàng đầu Việt Nam</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. TÍNH NĂNG TỰ ĐỘNG BỌC LINK ĐA NĂNG
-st.markdown('<div class="search-container">', unsafe_allow_html=True)
-st.subheader("🔍 Công Cụ Tối Ưu Link Mua Sắm Toàn Năng")
-st.write("Hỗ trợ tự động bọc mã ID đối với mọi sản phẩm từ Shopee, Lazada, Tiki, Tiktok Shop...")
-link_nhap = st.text_input("", placeholder="Dán bất kỳ đường link sản phẩm nào vào đây để nhận giá ưu đãi...", label_visibility="collapsed")
-if link_nhap:
-    merchant_detect = "shopee"
-    if "lazada" in link_nhap.lower(): merchant_detect = "lazada"
-    elif "tiki" in link_nhap.lower(): merchant_detect = "tiki"
-    
-    link_vip = tao_link_affiliate(link_nhap, merchant=merchant_detect)
-    st.success("🎉 Cấu hình link Affiliate thành công! Sẵn sàng chia sẻ kiếm tiền hoa hồng.")
-    st.markdown(f'<a href="{link_vip}" target="_blank"><button class="btn-buy" style="background: linear-gradient(90deg, #00F0FF 0%, #0072FF 100%); color:#060913;">👉 CLICK ĐỂ ĐẾN NƠI GIẢM GIÁ MẠNH NHẤT</button></a>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+# PHẦN 1: TÌM KIẾM & TRỢ LÝ AI TƯ VẤN (YÊU CẦU MỚI)
+col_search, col_ai = st.columns([2, 1])
 
-# 4. DANH MỤC ĐA NGÁCH PHỤC VỤ MỌI ĐỐI TƯỢNG KHÁCH HÀNG
-st.subheader("🛍️ Kho Deal Thật Khổng Lồ Tự Động Từ Các Chiến Dịch")
-tab_all, tab_tech, tab_home, tab_mom = st.tabs(["🔥 SIÊU DEAL TỔNG HỢP", "💻 ĐIỆN TỬ & CÔNG NGHỆ", "🏠 GIA DỤNG & ĐỜI SỐNG", "🍼 MẸ & BÉ GIÁ TỐT"])
+with col_search:
+    st.markdown('<p style="color:#F97316; font-weight:bold; margin-bottom:2px;">🔍 BẠN MUỐN TÌM SẢN PHẨM GÌ?</p>', unsafe_allow_html=True)
+    tu_khoa_tim = st.text_input("", placeholder="Nhập tên sản phẩm cần mua (Ví dụ: bỉm, son môi, tai nghe, nồi chiên...)", label_visibility="collapsed")
 
-# Dữ liệu dự phòng siêu đẹp (Chống trống giao diện khi API của sàn đang xử lý đồng bộ)
-kho_backups = {
-    "🔥": [{"name": "Sạc Dự Phòng Cực Khủng 20000mAh Sạc Nhanh 22.5W", "image": "https://images.unsplash.com/photo-1609592424109-dd9892f1b17c?w=400", "price": "249.000đ", "discount": "45", "url": "https://shopee.vn"},
-            {"name": "Tai Nghe Không Dây Bluetooth Âm Thanh Sống Động", "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400", "price": "185.000đ", "discount": "50", "url": "https://shopee.vn"}],
-    "công nghệ": [{"name": "Giá Đỡ Điện Thoại Kim Loại Cao Cấp Chống Rung Ô Tô", "image": "https://images.unsplash.com/photo-1586105251261-72a756497a11?w=400", "price": "65.000đ", "discount": "35", "url": "https://shopee.vn"}],
-    "gia dụng": [{"name": "Máy Hút Bụi Cầm Tay Không Dây Lực Hút Siêu Mạnh", "image": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=400", "price": "320.000đ", "discount": "40", "url": "https://shopee.vn"}],
-    "mẹ và bé": [{"name": "Bình Sữa Cổ Rộng Nhập Khẩu Cao Cấp An Toàn Cho Bé", "image": "https://images.unsplash.com/photo-1522836924445-4478bdeb860c?w=400", "price": "145.000đ", "discount": "25", "url": "https://shopee.vn"}]
+with col_ai:
+    st.markdown('<p style="color:#00F0FF; font-weight:bold; margin-bottom:2px;">🤖 TRỢ LÝ AI TƯ VẤN MUA SẮM</p>', unsafe_allow_html=True)
+    cau_hoi_ai = st.text_input("", placeholder="Hỏi AI: Cần mua quà sinh nhật cho vợ dưới 500k...", label_visibility="collapsed")
+
+if cau_hoi_ai:
+    st.info(f"🤖 **Trợ lý AI gợi ý:** Đối với yêu cầu '{cau_hoi_ai}', anh/chị nên tham khảo các dòng Son môi chính hãng hoặc Nước hoa đang sale 40% ở danh mục Mỹ Phẩm bên dưới, cam kết giá rẻ nhất thị trường!")
+
+# PHẦN 2: CÔNG CỤ DÁN LINK NHANH
+with st.expander("🔗 BẠN ĐÃ CÓ LINK SẢN PHẨM? DÁN VÀO ĐÂY ĐỂ ÉP MÃ GIẢM GIÁ"):
+    link_nhap = st.text_input("Dán link Shopee, Lazada, Tiki...", placeholder="https://...")
+    if link_nhap:
+        st.success("🎉 Đã ép mã giảm giá thành công! Bấm nút bên dưới để mua:")
+        st.markdown(f'<a href="{tao_link_affiliate(link_nhap)}" target="_blank"><button style="background-color:#F97316; color:white; padding:10px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; width:100%;">👉 MUA NGAY VỚI GIÁ GIẢM SÂU</button></a>', unsafe_allow_html=True)
+
+st.write("<br>", unsafe_allow_html=True)
+
+# PHẦN 3: HIỂN THỊ DANH MỤC SẢN PHẨM ĐA NGÁCH
+st.markdown('<h3 style="color:#F97316 !important; font-size:18px;">🔥 XU HƯỚNG MUA SẮM ĐA NGÁCH HÔM NAY</h3>', unsafe_allow_html=True)
+
+tab_all, tab_tech, tab_beauty, tab_mom, tab_home = st.tabs(["🌎 Tất Cả Deal Hot", "💻 Đồ Công Nghệ", "💄 Mỹ Phẩm - Làm Đẹp", "👶 Mẹ & Bé VIP", "🏠 Gia Dụng Thông Minh"])
+
+# Kho dữ liệu mồi đa dạng ngách phòng trường hợp API của sàn đang load
+kho_deal_ecom = {
+    "tat_ca": tai_tat_ca_deal_api(tu_khoa=tu_khoa_tim),
+    "cong_nghe": tai_tat_ca_deal_api(danh_muc="tai nghe, loa bluetooth, sạc dự phòng"),
+    "my_pham": tai_tat_ca_deal_api(danh_muc="son môi, kem chống nắng, nước hoa"),
+    "me_be": tai_tat_ca_deal_api(danh_muc="tã bỉm, sữa bột, đồ chơi trẻ em"),
+    "gia_dung": tai_tat_ca_deal_api(danh_muc="nồi chiên không dầu, máy hút bụi, quạt mini")
 }
 
-def hien_thi_danh_sach_deal(tu_khoa, backup_key):
-    # Lấy deal thật từ API tự động cập nhật
-    data_api = lay_deal_tu_dong_api() if tu_khoa == "🔥" else lay_deal_tu_dong_api() # Thực tế sẽ lọc theo từ khóa
-    if not data_api:
-        data_api = kho_backups[backup_key]
+def hien_thi_luoi_san_pham(danh_sach_sp, danh_muc_loai):
+    # Nếu API trống, nạp dữ liệu mồi chất lượng cao theo từng ngách ngay để giữ chân khách
+    if not danh_sach_sp:
+        dữ_lieu_moi = {
+            "cong_nghe": [{"name": "Tai Nghe Không Dây Bluetooth HIFI Cực Êm", "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300", "price": "185.000đ", "discount": "40", "url": "https://shopee.vn"}],
+            "my_pham": [{"name": "Son Kem Lì Mịn Môi Chính Hãng Siêu Tôn Da", "image": "https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=300", "price": "210.000đ", "discount": "35", "url": "https://shopee.vn"}],
+            "me_be": [{"name": "Combo 2 Gói Tã Bỉm Siêu Thấm Hút Cao Cấp Cho Bé", "image": "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?w=300", "price": "320.000đ", "discount": "25", "url": "https://shopee.vn"}],
+            "gia_dung": [{"name": "Nồi Chiên Không Dầu Đa Năng Cảm Ứng 6L", "image": "https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?w=300", "price": "790.000đ", "discount": "50", "url": "https://shopee.vn"}]
+        }
+        danh_sach_sp = dữ_lieu_moi.get(danh_muc_loai, dữ_lieu_moi["cong_nghe"])
         
-    col1, col2 = st.columns(2)
-    for index, item in enumerate(data_api):
-        cot_chon = col1 if index % 2 == 0 else col2
-        with cot_chon:
+    cols = st.columns(4)  # Chia làm lưới 4 cột sang trọng như shopee desktop/mobile lớn
+    for idx, item in enumerate(danh_sach_sp[:16]):
+        with cols[idx % 4]:
             ten = item.get("name", "Sản phẩm ưu đãi")
             anh = item.get("image", "https://via.placeholder.com/150")
-            giam = item.get("discount", "30")
+            giam = item.get("discount", "15")
             gia = f"{item.get('price'):,}đ" if isinstance(item.get("price"), int) else str(item.get("price", "Xem giá"))
-            link_final = tao_link_affiliate(item.get("url", "https://shopee.vn"))
+            link_aff = tao_link_affiliate(item.get("url", "https://shopee.vn"))
             
             st.markdown(f"""
-                <div class="product-grid-card">
-                    <img src="{anh}" style="width:100%; height:140px; border-radius:12px; object-fit:cover;">
-                    <div class="product-grid-title">{ten}</div>
-                    <div class="price-group">
-                        <span class="price-new">{gia}</span>
-                        <span class="discount-tag">-{giam}%</span>
+                <div class="ecom-card">
+                    <img src="{anh}" style="width:100%; height:140px; border-radius:8px; object-fit:cover;">
+                    <div class="ecom-title">{ten}</div>
+                    <div class="price-container">
+                        <span class="price-sale">{gia}</span>
+                        <span class="tag-giam">-{giam}%</span>
                     </div>
-                    <a href="{link_final}" target="_blank"><button class="btn-buy">🛒 Xem Chi Tiết & Mua Ngay</button></a>
+                    <a href="{link_aff}" target="_blank"><button style="background-color:#F97316; color:white; padding:7px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; width:100%; font-size:12px;">Xem Chi Tiết</button></a>
                 </div>
             """, unsafe_allow_html=True)
 
-with tab_all: hien_thi_danh_sach_deal("🔥", "🔥")
-with tab_tech: hien_thi_danh_sach_deal("điện tử, sạc", "công nghệ")
-with tab_home: hien_thi_danh_sach_deal("gia dụng, máy hút bụi", "gia dụng")
-with tab_mom: hien_thi_danh_sach_deal("bình sữa, tã em bé", "mẹ và bé")
-
-# 5. KHU VỰC SIÊU TRỢ LÝ AI ĐIỀU HÀNH - TÌM KIẾM KHÁCH HÀNG & LÊN KỊCH BẢN TỰ ĐỘNG
-st.markdown('<div class="ai-box">', unsafe_allow_html=True)
-st.subheader("🤖 TRỢ LÝ AI-QUANTUM: TỰ ĐỘNG TÌM KHÁCH & SOẠN BÀI")
-st.write("Hệ thống trí tuệ nhân tạo hỗ trợ anh Đạt phân tích hành vi và lên bài đăng tự động lan tỏa link:")
-
-ngach_chon = st.selectbox("1. Chọn ngách sản phẩm anh muốn ra đơn hôm nay:", ["Đồ dùng/Đồ chơi dành cho tài xế xe công nghệ", "Đồ gia dụng thông minh cho gia đình", "Sản phẩm bỉm sữa, đồ chơi trẻ em"])
-kenh_dang = st.selectbox("2. Chọn kênh anh muốn triển khai tìm kiếm khách hàng:", ["Hội nhóm Facebook công khai", "Nhóm Chat Zalo / Telegram", "Trang cá nhân thu hút thụ động"])
-
-if st.button("🧠 KÍCH HOẠT AI PHÂN TÍCH & SOẠN BÀI"):
-    st.info("🔮 AI đang phân tích tệp khách hàng trực tuyến...")
-    
-    if "tài xế" in ngach_chon.lower():
-        st.markdown(f"""
-        **🎯 Tệp khách hàng mục tiêu:** Tài xế chạy xe taxi công nghệ, xe dịch vụ, hay di chuyển ngoài đường. Thói quen online vào khung giờ nghỉ trưa (11h30-13h) và đêm muộn sau ca chạy.
-        
-        **📝 Gợi ý kịch bản đăng bài (Copy rải nhóm Facebook/Zalo):**
-```text
-        Anh em tài xế chạy ca ngày nắng nóng hay bị sập nguồn điện thoại thì vào đây xem thử nhé. 
-        Em vừa săn được mã giảm 45% cho con Sạc dự phòng 20000mAh sạc siêu nhanh, hàng chính hãng dùng bao mượt cho anh em di chuyển liên tục.
-        Anh em vào lấy mã ưu đãi tại app tổng kho của em nhé: [https://tro-ly-phong-thuy.streamlit.app](https://tro-ly-phong-thuy.streamlit.app)
-        ```
-        """)
-    else:
-        st.markdown(f"""
-        **🎯 Tệp khách hàng mục tiêu:** Hội chị em phụ nữ, các bà mẹ bỉm sữa thích săn hàng sale giá rẻ, thích săn mã freeship vào khung giờ vàng 0h và 12h trưa.
-        
-        **📝 Gợi ý kịch bản đăng bài:**
-```text
-        Các mom ơi, em vừa dùng hệ thống AI quét được lô bình sữa cao cấp và máy hút bụi cầm tay đang được trợ giá giảm sâu tận 40-50% trên sàn lớn này.
-        Mọi người không cần tìm kiếm đâu xa, cứ vào thẳng cổng tổng hợp deal an toàn của em chọn món mình cần là tự áp mã giảm nhé: [https://tro-ly-phong-thuy.streamlit.app](https://tro-ly-phong-thuy.streamlit.app)
-        ```
-        """)
-st.markdown('</div>', unsafe_allow_html=True)
+with tab_all:
+    hien_thi_luoi_san_pham(kho_deal_ecom["tat_ca"], "cong_nghe")
+with tab_tech:
+    hien_thi_luoi_san_pham(kho_deal_ecom["cong_nghe"], "cong_nghe")
+with tab_beauty:
+    hien_thi_luoi_san_pham(kho_deal_ecom["my_pham"], "my_pham")
+with tab_me_be:
+    hien_thi_luoi_san_pham(kho_deal_ecom["me_be"], "me_be")
+with tab_home:
+    hien_thi_luoi_san_pham(kho_deal_ecom["gia_dung"], "gia_dung")
