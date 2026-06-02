@@ -2,48 +2,108 @@ import streamlit as st
 import urllib.parse
 
 # 1. CẤU HÌNH THÔNG TIN AFFILIATE CỦA ANH ĐẠT
-ACCESSTRADE_ID = "103085"  # Mã ID AT103085 của anh Đạt
+ACCESSTRADE_ID = "103085"  
 UTM_SOURCE = "taxi_promax_app"
 
 def tao_link_affiliate(link_goc):
-    """
-    Hàm tự động bọc link gốc (Shopee/Lazada) thành link Affiliate của Accesstrade
-    """
     base_url = "https://fast.accesstrade.com.vn/deep_link/v4"
     link_ma_hoa = urllib.parse.quote(link_goc)
     link_affiliate = f"{base_url}?merchant_id=shopee&id={ACCESSTRADE_ID}&url={link_ma_hoa}&utm_source={UTM_SOURCE}"
     return link_affiliate
 
-# 2. CẤU HÌNH GIAO DIỆN STREAMLIT
-st.set_page_config(page_title="Hệ Thống Săn Deal Tự Động", page_icon="🛍️", layout="wide")
+# 2. CẤU HÌNH GIAO DIỆN CHUYÊN NGHIỆP
+st.set_page_config(page_title="Săn Deal Tự Động Pro", page_icon="🛍️", layout="wide")
 
-# CSS Tùy chỉnh giao diện hiển thị chuyên nghiệp
+# Ép toàn bộ giao diện sang nền tối và chỉnh sửa font chữ, nút bấm sắc nét
 st.markdown("""
     <style>
-    .main-title { font-size:32px; font-weight:bold; color:#00B4D8; text-align:center; margin-bottom:20px; }
-    .deal-card { background-color:#1e293b; padding:15px; border-radius:10px; border-left:5px solid #00B4D8; margin-bottom:15px; }
-    .price-old { text-decoration: line-through; color:#94a3b8; font-size:14px; margin-bottom:2px; }
-    .price-new { color:#ef4444; font-weight:bold; font-size:18px; margin-bottom:10px; }
+    /* Chỉnh nền toàn bộ app sang màu tối đồng bộ */
+    .stApp {
+        background-color: #0B0F19;
+    }
+    
+    /* Làm lại tiêu đề chính chỉnh chu, có ánh kim cyan */
+    .main-title { 
+        font-size: 24px; 
+        font-weight: 800; 
+        color: #00E5FF; 
+        text-align: center; 
+        margin-top: 10px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .sub-title {
+        font-size: 14px;
+        color: #94A3B8;
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    
+    /* Thiết kế lại thẻ Card Deal nhìn xịn sò, bo góc, có bóng mờ */
+    .deal-card { 
+        background: linear-gradient(145deg, #1E293B, #111827);
+        padding: 20px; 
+        border-radius: 16px; 
+        border: 1px solid #334155;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        margin-bottom: 20px; 
+    }
+    
+    .deal-title {
+        color: #F8FAFC;
+        font-size: 16px;
+        font-weight: 600;
+        margin-top: 0px;
+        margin-bottom: 12px;
+        line-height: 1.4;
+    }
+    
+    .price-old { 
+        text-decoration: line-through; 
+        color: #64748B; 
+        font-size: 13px; 
+        margin-bottom: 2px; 
+    }
+    
+    .price-new { 
+        color: #FF4D4D; 
+        font-weight: 700; 
+        font-size: 20px; 
+        margin-bottom: 15px; 
+    }
+    
+    /* Chỉnh lại các chữ tiêu đề mặc định của Streamlit thành màu sáng */
+    h3 {
+        color: #00E5FF !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+    }
+    
+    div[data-testid="stMarkdownContainer"] p {
+        color: #CBD5E1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">🛍️ HỆ THỐNG TỔNG HỢP DEAL HOT & MÃ GIẢM GIÁ 🛍️</div>', unsafe_allow_html=True)
-st.write("---")
+# Hiển thị tiêu đề
+st.markdown('<div class="main-title">🛍️ TỔNG HỢP DEAL HOT & MÃ GIẢM GIÁ 🛍️</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Hệ thống tự động cập nhật mã ưu đãi Shopee & Lazada liên tục</div>', unsafe_allow_html=True)
 
-# PHẦN 1: TỰ TẠO LINK AFFILIATE NHANH
+# PHẦN 1: TỰ TẠO LINK QUICK-ACCESS
 st.subheader("🔗 Tự Tạo Link Giảm Giá Nhanh")
-st.write("Dán bất kỳ đường link sản phẩm nào từ Shopee hoặc Lazada vào đây để hệ thống tự động bọc mã giảm giá kiếm tiền của anh:")
-link_nhap = st.text_input("Nhập link sản phẩm tại đây:", placeholder="https://shopee.vn/...")
+link_nhap = st.text_input("Dán link sản phẩm Shopee / Lazada vào đây:", placeholder="https://shopee.vn/...")
 
 if link_nhap:
     link_kiem_tien = tao_link_affiliate(link_nhap)
-    st.success("🎉 Đã tạo link tích hợp mã Affiliate thành công!")
-    st.markdown(f'<a href="{link_kiem_tien}" target="_blank"><button style="background-color:#00B4D8; color:white; padding:12px 24px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-size:16px;">👉 BẤM VÀO ĐÂY ĐỂ ĐẾN NƠI MUA GIẢM GIÁ</button></a>', unsafe_allow_html=True)
+    st.success("🎉 Đã tích hợp mã giảm giá thành công!")
+    st.markdown(f'<a href="{link_kiem_tien}" target="_blank"><button style="background-color:#00E5FF; color:#0B0F19; padding:12px 24px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:15px; width:100%;">👉 BẤM VÀO ĐÂY ĐỂ ĐẾN NƠI MUA GIẢM GIÁ</button></a>', unsafe_allow_html=True)
 
-st.write("---")
+st.write("<br>", unsafe_allow_html=True)
 
-# PHẦN 2: DỮ LIỆU KHO DEAL MẪU (SẼ DÙNG BOT CÀO TỰ ĐỘNG SAU NÀY)
-st.subheader("🔥 Top Deal Phụ Tùng & Đồ Chơi Xe Hời Nhất Hôm Nay")
+# PHẦN 2: DỮ LIỆU KHO DEAL MẪU
+st.subheader("🔥 Top Deal Phụ Tùng & Đồ Chơi Xe Hot Hôm Nay")
 
 danh_sach_deal = [
     {
@@ -66,18 +126,14 @@ danh_sach_deal = [
     }
 ]
 
-# Chia giao diện làm 3 cột để hiển thị các thẻ Deal
-col1, col2, col3 = st.columns(3)
-cac_cot = [col1, col2, col3]
-
-for index, item in enumerate(danh_sach_deal):
-    with cac_cot[index % 3]:
-        link_aff = tao_link_affiliate(item["link"])
-        st.markdown(f"""
-            <div class="deal-card">
-                <h4 style="color:white; margin-top:0; min-height:45px;">{item['ten']}</h4>
-                <p class="price-old">Giá gốc: {item['gia_goc']}</p>
-                <p class="price-new">Giá sale: {item['gia_giam']}</p>
-                <a href="{link_aff}" target="_blank"><button style="background-color:#ef4444; color:white; padding:8px 15px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; width:100%;">🛒 Lấy Mã & Mua Ngay</button></a>
-            </div>
-        """, unsafe_allow_html=True)
+# Đưa các thẻ deal hiển thị mượt mà trên giao diện dọc điện thoại
+for item in danh_sach_deal:
+    link_aff = tao_link_affiliate(item["link"])
+    st.markdown(f"""
+        <div class="deal-card">
+            <div class="deal-title">{item['ten']}</div>
+            <div class="price-old">Giá gốc: {item['gia_goc']}</div>
+            <div class="price-new">Giá sale: {item['gia_giam']}</div>
+            <a href="{link_aff}" target="_blank"><button style="background-color:#FF4D4D; color:white; padding:10px 15px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:14px;">🛒 Lấy Mã & Mua Ngay</button></a>
+        </div>
+    """, unsafe_allow_html=True)
