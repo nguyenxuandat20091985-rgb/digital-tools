@@ -5,7 +5,7 @@ import requests
 # 1. CẤU HÌNH THÔNG TIN AFFILIATE CỦA ANH ĐẠT
 ACCESSTRADE_ID = "103085"  
 API_TOKEN = "9R6Pf6Zs3mRL2M0qcXzb48yOhrIvZsqE"  
-UTM_SOURCE = "san_deal_pro_app"
+UTM_SOURCE = "sandeal_pro_app"
 
 def tao_link_affiliate(link_goc):
     base_url = "https://fast.accesstrade.com.vn/deep_link/v4"
@@ -25,117 +25,138 @@ def lay_deal_tu_dong_api():
     except:
         return []
 
-# 2. THIẾT KẾ UI ĐẲNG CẤP, HIỆN ĐẠI
+# 2. THIẾT KẾ UI/UX CHUYÊN NGHIỆP CẤP CAO
 st.set_page_config(page_title="Săn Deal Tự Động Pro", page_icon="🛍️", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #080C14; }
+    /* Nền tối sâu tạo độ nổi bật cho sản phẩm */
+    .stApp { background-color: #0F172A; }
     
-    /* Giao diện Banner Chuyên Nghiệp - Đã đổi tên chuẩn */
+    /* Giao diện Banner Gradient Luxury */
     .hero-banner {
-        background: linear-gradient(135deg, #00F0FF 0%, #0072FF 100%);
-        padding: 30px 20px;
-        border-radius: 20px;
+        background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
+        padding: 35px 20px;
+        border-radius: 24px;
         text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0 8px 32px rgba(0, 240, 255, 0.15);
-    }
-    .hero-title { font-size: 24px; font-weight: 800; color: #080C14; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
-    .hero-sub { font-size: 13px; color: #080C14; font-weight: 500; opacity: 0.9; }
-    
-    /* Thanh công cụ nhập link VIP */
-    .tool-box {
-        background: #111827;
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px solid #1F2937;
         margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(255, 65, 108, 0.25);
+    }
+    .hero-title { font-size: 26px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .hero-sub { font-size: 13px; color: #FFFFFF; font-weight: 400; opacity: 0.95; }
+    
+    /* Khung nhập link bo góc mịn màng */
+    .tool-box {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+        padding: 24px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 35px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     }
     
-    /* Thiết kế Thẻ Sản phẩm (Card) chuẩn E-commerce */
+    /* Định dạng thanh nhập liệu Text Input của Streamlit cho đẹp hơn */
+    div[data-testid="stTextInput"] input {
+        background-color: #0F172A !important;
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+        padding: 12px 15px !important;
+    }
+    div[data-testid="stTextInput"] input:focus {
+        border-color: #FF4B2B !important;
+        box-shadow: 0 0 0 2px rgba(255, 75, 43, 0.2) !important;
+    }
+    
+    /* Thẻ Sản phẩm phong cách Kính Mờ cao cấp */
     .product-card {
-        background: #151F32;
-        border: 1px solid #233554;
-        border-radius: 16px;
-        padding: 12px;
-        margin-bottom: 18px;
-        transition: transform 0.2s;
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
     }
     .product-title {
-        color: #F8FAFC;
-        font-size: 14px;
+        color: #F1F5F9;
+        font-size: 14.5px;
         font-weight: 600;
-        margin: 10px 0 6px 0;
-        height: 40px;
+        margin: 12px 0 8px 0;
+        height: 44px;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
-        line-height: 1.4;
+        line-height: 1.5;
     }
-    .price-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .price-actual { color: #FF4A4A; font-size: 18px; font-weight: 700; }
-    .badge-discount { background: #EF4444; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 6px; }
+    .price-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+    .price-actual { color: #F43F5E; font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
+    .badge-discount { background: #10B981; color: white; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 8px; }
     
-    /* Chỉnh chữ tiêu đề hệ thống */
-    h2, h3 { color: #00F0FF !important; font-weight: 700 !important; font-size: 18px !important; }
-    div[data-testid="stMarkdownContainer"] p { color: #94A3B8; font-size: 13px; }
+    /* Nút bấm mua hàng bo tròn mượt mà */
+    .btn-buy { background: linear-gradient(90deg, #FF416C, #FF4B2B); color: white; padding: 12px; border: none; border-radius: 12px; cursor:pointer; font-weight:700; width:100%; font-size:14px; box-shadow: 0 4px 12px rgba(255, 65, 108, 0.2); transition: all 0.2s; }
     
+    /* Cấu hình các thanh Tabs phân loại sàn */
+    button[data-baseweb="tab"] { color: #94A3B8 !important; font-size: 14px !important; font-weight: 600 !important; }
+    button[aria-selected="true"] { color: #FF4B2B !important; }
+    div[data-testid="stMarkdownContainer"] h3 { color: #F1F5F9 !important; font-size: 16px !important; margin-bottom: 10px !important; }
+    
+    /* Dọn dẹp thanh thừa */
     footer {visibility: hidden;}
     header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# ĐÃ ĐỔI TÊN Ở ĐÂY ANH NHÉ!
+# Hiển thị Banner Đẳng Cấp Thương Hiệu Riêng
 st.markdown("""
     <div class="hero-banner">
         <div class="hero-title">🛍️ SĂN DEAL TỰ ĐỘNG PRO 🛍️</div>
-        <div class="hero-sub">Hệ thống AI tự động quét và bọc link Affiliate kiếm tiền thụ động</div>
+        <div class="hero-sub">Hệ thống AI tự động quét mã giảm giá và bọc link Affiliate độc quyền 24/7</div>
     </div>
 """, unsafe_allow_html=True)
 
 # PHẦN 1: TÍNH NĂNG CHUYỂN LINK
 st.markdown('<div class="tool-box">', unsafe_allow_html=True)
-st.subheader("🔗 Dán Link Mua Hàng Tiết Kiệm")
-st.write("Dán link Shopee/Lazada bất kỳ, hệ thống sẽ tự động áp mã giảm giá ẩn của tổng kho:")
-link_nhap = st.text_input("", placeholder="Nhập hoặc dán đường dẫn sản phẩm tại đây...", label_visibility="collapsed")
+st.markdown('<h3>🔗 Dán Link Sản Phẩm Nhận Ưu Đãi</h3>', unsafe_allow_html=True)
+link_nhap = st.text_input("", placeholder="Dán link Shopee, Lazada hoặc TiktokShop vào đây...", label_visibility="collapsed")
 if link_nhap:
     link_kiem_tien = tao_link_affiliate(link_nhap)
-    st.success("🎉 Đã tìm thấy mã giảm giá độc quyền!")
-    st.markdown(f'<a href="{link_kiem_tien}" target="_blank"><button style="background-color:#00F0FF; color:#080C14; padding:12px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:14px;">👉 BẤM ĐỂ MUA GIÁ ƯU ĐÃI NGAY</button></a>', unsafe_allow_html=True)
+    st.success("🎉 Hệ thống đã bọc mã ưu đãi thành công!")
+    st.markdown(f'<a href="{link_kiem_tien}" target="_blank"><button class="btn-buy" style="background: linear-gradient(90deg, #00F0FF, #0072FF); color:#0F172A;">👉 BẤM ĐỂ MUA VỚI GIÁ KHUYẾN MÃI</button></a>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Tab phân loại sàn
-tab1, tab2, tab3 = st.tabs(["🔥 Đồ Chơi Xe HOT", "🧡 Shopee Deal", "💙 Lazada Deal"])
+# Tab phân loại sàn giao diện tinh tế
+tab1, tab2, tab3 = st.tabs(["🔥 Deal Xe & Công Nghệ", "🧡 Sàn Shopee", "💙 Sàn Lazada"])
 
+# Kho dữ liệu mồi hình ảnh cực nét, chuẩn đồ công nghệ xe cộ tài xế mê
 kho_deal_vip = [
     {
-        "name": "Bơm Lốp Ô Tô Điện Tử Thông Minh Siêu Tốc A8",
-        "image": "https://images.unsplash.com/photo-1563720223185-11003d516935?w=500",
+        "name": "Bơm Lốp Ô Tô Điện Tử Cầm Tay Đa Năng Tự Ngắt Siêu Tốc A8",
+        "image": "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=500&q=80",
         "price": "399.000đ",
         "discount": "45",
         "url": "https://shopee.vn"
     },
     {
-        "name": "Giá Đỡ Điện Thoại Chống Rung Cực Chắc Cho Tài Xế",
-        "image": "https://images.unsplash.com/photo-1586105251261-72a756497a11?w=500",
+        "name": "Giá Đỡ Điện Thoại Ô Tô Chống Rung Hút Chân Không Cao Cấp",
+        "image": "https://images.unsplash.com/photo-1584438784894-089d6a128f3e?w=500&q=80",
         "price": "89.000đ",
         "discount": "30",
         "url": "https://shopee.vn"
     },
     {
-        "name": "Tẩu Sạc Nhanh Ô Tô Cao Cấp Tích Hợp Đèn LED",
-        "image": "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500",
+        "name": "Tẩu Sạc Nhanh Ô Tô 120W Tích Hợp Đèn LED Hiển Thị Điện Áp",
+        "image": "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500&q=80",
         "price": "125.000đ",
         "discount": "50",
         "url": "https://shopee.vn"
     },
     {
-        "name": "Bạt Phủ Xe Ô Tô Phản Quang Chống Nóng Cách Nhiệt",
-        "image": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=500",
-        "price": "270.000đ",
-        "discount": "40",
+        "name": "Nước Hoa Treo Xe Ô Tô Khử Mùi Hương Tự Nhiên Nhập Khẩu",
+        "image": "https://images.unsplash.com/photo-1615396899839-c99c121888b0?w=500&q=80",
+        "price": "149.000đ",
+        "discount": "35",
         "url": "https://shopee.vn"
     }
 ]
@@ -162,17 +183,17 @@ with tab1:
             
             st.markdown(f"""
                 <div class="product-card">
-                    <img src="{anh}" style="width:100%; height:130px; border-radius:10px; object-fit:cover;">
+                    <img src="{anh}" style="width:100%; height:150px; border-radius:14px; object-fit:cover;">
                     <div class="product-title">{ten}</div>
                     <div class="price-row">
                         <span class="price-actual">{gia}</span>
-                        <span class="badge-discount">-{giam}%</span>
+                        <span class="badge-discount">🔥 Giảm {giam}%</span>
                     </div>
-                    <a href="{link_aff}" target="_blank"><button style="background-color:#FF3A44; color:white; padding:8px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:12px;">Mua Ngay</button></a>
+                    <a href="{link_aff}" target="_blank"><button class="btn-buy">🛒 Lấy Mã & Mua Ngay</button></a>
                 </div>
             """, unsafe_allow_html=True)
 
 with tab2:
-    st.write("✨ Các mã giảm giá sàn Shopee áp dụng tự động khi thanh toán qua link app.")
+    st.info("💡 Mã giảm giá Shopee Live, Shopee Video sẽ tự động kích hoạt khi mua qua link.")
 with tab3:
-    st.write("✨ Các mã giảm giá sàn Lazada áp dụng tự động khi thanh toán qua link app.")
+    st.info("💡 Voucher tích lũy và mã freeship Lazada được tích hợp tự động vào giỏ hàng.")
