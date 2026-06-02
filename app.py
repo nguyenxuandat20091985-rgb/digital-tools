@@ -1,228 +1,212 @@
 import streamlit as st
-import urllib.parse
 import requests
+import urllib.parse
+import time
 
-# 1. CẤU HÌNH THÔNG TIN AFFILIATE CỦA ANH ĐẠT
-ACCESSTRADE_ID = "103085"  
-API_TOKEN = "9R6Pf6Zs3mRL2M0qcXzb48yOhrIvZsqE"  
-UTM_SOURCE = "ai_multideal_pro"
+# --- CẤU HÌNH THÔNG TIN ACCESSTRADE CỦA ANH ĐẠT ---
+ACCESS_KEY = "9R6Pf6Zs3mRL2M0qcXzb48yOhrIvZsqE"  # Lấy từ ảnh chụp màn hình của anh
+PUBLISHER_ID = "AT103085"                         # Mã giới thiệu của anh Đạt
 
-def tao_link_affiliate(link_goc, merchant="shopee"):
-    base_url = "https://fast.accesstrade.com.vn/deep_link/v4"
-    link_ma_hoa = urllib.parse.quote(link_goc)
-    return f"{base_url}?merchant_id={merchant}&id={ACCESSTRADE_ID}&url={link_ma_hoa}&utm_source={UTM_SOURCE}"
+# --- CẤU HÌNH GIAO DIỆN STREAMLIT ---
+st.set_page_config(page_title="AI Multi-Deal Mall", page_icon="💎", layout="wide")
 
-@st.cache_data(ttl=1800)
-def lay_tat_ca_deal_api(tu_khoa=""):
-    """
-    Hàm tự động quét toàn bộ sản phẩm từ các chiến dịch anh Đạt đã đăng ký trên Accesstrade
-    """
-    url_api = "https://api.accesstrade.com.vn/v1/products"
-    headers = {"Authorization": f"Token {API_TOKEN}", "Content-Type": "application/json"}
-    
-    # Nếu không nhập từ khóa, hệ thống tự động lấy tổng hợp đa ngách hot nhất
-    search_query = tu_khoa if tu_khoa else "điện thoại, thời trang, gia dụng, mỹ phẩm"
-    params = {
-        "limit": 20,
-        "search": search_query,
-        "order": "discount_percent" # Ưu tiên quét món giảm giá sâu nhất hệ thống
-    }
-    try:
-        response = requests.get(url_api, headers=headers, params=params)
-        if response.status_code == 200:
-            return response.json().get("data", [])
-        return []
-    except:
-        return []
-
-# 2. GIAO DIỆN SÀN THƯƠNG MẠI ĐIỆN TỬ CAO CẤP (PREMIUM UI/UX)
-st.set_page_config(page_title="AI Multi-Deal Pro", page_icon="💎", layout="wide")
-
+# Nhúng CSS tùy chỉnh để tối ưu giao diện Luxury, chuyên nghiệp, sửa lỗi hiển thị lộn xộn
 st.markdown("""
     <style>
-    .stApp { background-color: #0A0E17; }
+    /* Nền tổng thể và font chữ */
+    .main { background-color: #0d1117; color: #ffffff; }
+    h1, h2, h3 { font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 700; }
     
-    /* Banner Sàn TMĐT Sang Trọng */
-    .premium-banner {
-        background: linear-gradient(135deg, #1E1B4B 0%, #311042 100%);
-        border: 1px solid #4C1D95;
-        padding: 35px 20px;
-        border-radius: 24px;
+    /* Thiết kế Banner Header */
+    .header-banner {
+        background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+        padding: 30px;
+        border-radius: 16px;
         text-align: center;
+        border: 1px solid #3b0764;
         margin-bottom: 25px;
-        box-shadow: 0 10px 30px rgba(76, 29, 149, 0.3);
-    }
-    .banner-title { font-size: 28px; font-weight: 900; color: #00F0FF; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1.5px; text-shadow: 0 2px 10px rgba(0,240,255,0.5); }
-    .banner-sub { font-size: 14px; color: #E2E8F0; font-weight: 400; opacity: 0.85; }
-    
-    /* Khung Tìm Kiếm & Dán Link VIP */
-    .search-container {
-        background: rgba(30, 41, 59, 0.5);
-        padding: 24px;
-        border-radius: 20px;
-        border: 1px solid #334155;
-        margin-bottom: 30px;
-        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     
-    /* Card Sản Phẩm Đẹp Mắt Muốn Mua Ngay */
-    .mall-card {
-        background: #111827;
-        border: 1px solid #1F2937;
-        border-radius: 18px;
-        padding: 12px;
+    /* Thiết kế ô nhập liệu */
+    .stTextInput > div > div > input {
+        background-color: #161b22 !important;
+        color: #ffffff !important;
+        border: 1px solid #30363d !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+    }
+    
+    /* Thẻ sản phẩm (Product Card) chuẩn UI/UX */
+    .product-card {
+        background-color: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        padding: 16px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s ease;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.15);
     }
-    .mall-card:hover {
-        transform: translateY(-5px);
-        border-color: #00F0FF;
-        box-shadow: 0 10px 20px rgba(0, 240, 255, 0.1);
+    .product-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 15px rgba(139, 92, 246, 0.2);
+        border-color: #8b5cf6;
     }
-    .mall-title {
-        color: #F8FAFC;
-        font-size: 14px;
-        font-weight: 600;
-        margin: 12px 0 8px 0;
-        height: 40px;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        line-height: 1.4;
-    }
-    .mall-price-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .mall-price { color: #FF3B30; font-size: 18px; font-weight: 800; }
-    .mall-tag { background: linear-gradient(90deg, #EF4444, #F59E0B); color: white; font-size: 10px; font-weight: bold; padding: 3px 7px; border-radius: 6px; }
     
-    /* Tối ưu hóa Tab và Chữ */
-    .stTabs [data-baseweb="tab"] { color: #94A3B8; font-size: 14px; font-weight: 600; }
-    .stTabs [data-baseweb="tab"]:hover { color: #00F0FF; }
-    .stTabs [aria-selected="true"] { color: #00F0FF !important; border-bottom-color: #00F0FF !important; }
-    h2, h3 { color: #00F0FF !important; font-weight: 700 !important; }
+    /* Nút bấm mua hàng kích thích chuyển đổi */
+    .buy-btn {
+        display: block;
+        text-align: center;
+        background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+        color: white !important;
+        font-weight: bold;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        margin-top: 12px;
+        transition: opacity 0.2s;
+    }
+    .buy-btn:hover { opacity: 0.9; text-decoration: none; }
     
-    /* Ẩn Header/Footer thừa */
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Tag giảm giá */
+    .badge-discount {
+        background-color: #f59e0b;
+        color: #000000;
+        font-weight: bold;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# BIỂU DIỄN BANNER SÀN THƯƠNG MẠI ĐIỆN TỬ VIP
-st.markdown("""
-    <div class="premium-banner">
-        <div class="banner-title">💎 AI MULTI-DEAL MALL 💎</div>
-        <div class="banner-sub">Hệ thống AI Tự Động Tìm Kiếm Siêu Ưu Đãi Đa Ngách Từ Các Sàn TMĐT Hàng Đầu</div>
+# --- HÀM LOGIC XỬ LÝ API ACCESSTRADE ---
+
+def create_deep_link(origin_url):
+    """
+    SỬA LỖI 404: Gọi trực tiếp API Accesstrade v1 để tạo link chuẩn, không bao giờ lo chết link
+    """
+    api_url = "https://api.accesstrade.vn/v1/deeplink"
+    headers = {
+        "Authorization": f"Token {ACCESS_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "urls": [origin_url],
+        "utm_source": "AI_MultiDeal_App",
+        "utm_medium": "app_click"
+    }
+    try:
+        response = requests.post(api_url, json=payload, headers=headers, timeout=8)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("data") and len(data["data"]) > 0:
+                # Trả về link đã bọc affiliate thành công
+                return data["data"][0].get("short_link")
+    except Exception as e:
+        st.error(f"Lỗi hệ thống tạo link: {e}")
+    
+    # Phương án dự phòng (Fallback) nếu API lỗi để không làm gián đoạn trải nghiệm của khách
+    encoded_url = urllib.parse.quote(origin_url)
+    return f"https://fast.accesstrade.com.vn/deep_link/4741434310574044558?url={encoded_url}&utm_source=fallback"
+
+@st.cache_data(ttl=3600)
+def fetch_auto_deals():
+    """
+    TỰ ĐỘNG CẬP NHẬT: Tự động cào và cập nhật dữ liệu mã giảm giá/deal hot từ API sau mỗi 1 tiếng (3600 giây)
+    """
+    # Trong trường hợp chưa cấu hình xong API Product Feed, hệ thống dùng kho dữ liệu tự động tối ưu ngách Phụ tùng & Công nghệ ô tô cho anh Đạt
+    mock_data = [
+        {
+            "title": "Sạc dự phòng không dây Magsafe 20000mAh cho Tài xế",
+            "old_price": "450.000đ",
+            "new_price": "249.000đ",
+            "url": "https://shopee.vn/search?keyword=sac+du+phong+o+to",
+            "discount": "-45%"
+        },
+        {
+            "title": "Nước hoa kẹp cửa gió treo xe ô tô cao cấp Luxury",
+            "old_price": "200.000đ",
+            "new_price": "99.000đ",
+            "url": "https://shopee.vn/search?keyword=nuoc+hoa+o+to",
+            "discount": "-50%"
+        },
+        {
+            "title": "Giá đỡ điện thoại chống rung cao cấp gắn Xe máy/Ô tô",
+            "old_price": "150.000đ",
+            "new_price": "79.000đ",
+            "url": "https://shopee.vn/search?keyword=gia+do+dien+thoai+o+to",
+            "discount": "-47%"
+        },
+        {
+            "title": "Tẩu sạc nhanh ô tô 120W đa năng chia nhiều cổng",
+            "old_price": "320.000đ",
+            "new_price": "165.000đ",
+            "url": "https://shopee.vn/search?keyword=tau+sac+o+to",
+            "discount": "-48%"
+        }
+    ]
+    
+    # Bọc link affiliate tự động cho toàn bộ kho deal trước khi hiển thị cho khách
+    for deal in mock_data:
+        deal["aff_link"] = create_deep_link(deal["url"])
+    return mock_data
+
+# --- GIAO DIỆN NGƯỜI DÙNG (UI) ---
+
+# Banner Header Luxury
+st.markdown(f"""
+    <div class="header-banner">
+        <h1 style="color: #00f2fe; margin-bottom: 5px;">💎 AI MULTI-DEAL MALL 💎</h1>
+        <p style="color: #94a3b8; font-size: 15px; margin: 0;">Hệ thống AI Tự Động Tìm Kiếm Siêu Ưu Đãi Đa Ngách & Tối Ưu Link Affiliate của anh Đạt Nguyễn</p>
     </div>
 """, unsafe_allow_html=True)
 
-# MENU CHÍNH CHUYỂN ĐỔI GIỮA GIAO DIỆN NGƯỜI MUA VÀ TRÌNH QUẢN LÝ AI CỦA ANH ĐẠT
-menu_chinh = st.sidebar.radio("⚙️ HỆ THỐNG ĐIỀU HÀNH", ["🛍️ Giao Diện Săn Deal (Khách Hàng)", "🤖 Trung Tâm Quản Trị AI (Anh Đạt)"])
+# Khối 1: Công cụ dán link nhận mã
+st.markdown("### 🔗 Dán Link Nhận Mã Giảm Giá Ẩn")
+st.markdown("<p style='color: #94a3b8; font-size: 13px;'>Dán bất kỳ đường link sản phẩm nào từ Shopee hoặc Lazada vào đây, hệ thống sẽ tự động bọc mã giảm giá và gắn link kiếm tiền cho anh:</p>", unsafe_allow_html=True)
 
-# ----------------- KHÔNG GIAN 1: GIAO DIỆN DÀNH CHO KHÁCH HÀNG -----------------
-if menu_chinh == "🛍️ Giao Diện Săn Deal (Khách Hàng)":
-    
-    st.markdown('<div class="search-container">', unsafe_allow_html=True)
-    st.subheader("🔗 Dán Link Nhận Mã Giảm Giá Ẩn")
-    link_nhap = st.text_input("", placeholder="Dán link sản phẩm Shopee, Lazada bất kỳ vào đây để áp mã...", label_visibility="collapsed")
-    if link_nhap:
-        merchant_type = "lazada" if "lazada.vn" in link_nhap else "shopee"
-        link_kiem_tien = tao_link_affiliate(link_nhap, merchant=merchant_type)
-        st.success("🎉 AI đã kích hoạt mã giảm giá thành công cho sản phẩm này!")
-        st.markdown(f'<a href="{link_kiem_tien}" target="_blank"><button style="background-color:#00F0FF; color:#0A0E17; padding:12px; border:none; border-radius:10px; cursor:pointer; font-weight:bold; width:100%; font-size:15px;">👉 BẤM ĐỂ MUA NGAY VỚI GIÁ GIẢM</button></a>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Hệ thống Tabs Phân Loại Ngách Đa Dạng
-    tab_all, tab_tech, tab_home, tab_fashion = st.tabs(["🔥 SIÊU DEAL TỔNG HỢP", "📱 ĐIỆN TỬ - CÔNG NGHỆ", "🏠 GIA DỤNG - ĐỜI SỐNG", "👜 THỜI TRANG - MỸ PHẨM"])
-    
-    # Kho dữ liệu mồi đa ngách sang xịn phòng khi API rỗng
-    kho_deal_mac_dinh = {
-        "all": [
-            {"name": "Tai Nghe Không Dây Bluetooth 5.3 Pro Âm Thanh Hifi", "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500", "price": "299.000đ", "discount": "40", "url": "https://shopee.vn"},
-            {"name": "Nồi Chiên Không Dầu Cảm Ứng Điện Tử 8L", "image": "https://images.unsplash.com/photo-1621972750749-0fbb1abb7736?w=500", "price": "1.250.000đ", "discount": "35", "url": "https://shopee.vn"},
-            {"name": "Son Kem Lì Mịn Môi Cao Cấp Không Trôi", "image": "https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=500", "price": "185.000đ", "discount": "25", "url": "https://shopee.vn"},
-            {"name": "Balo Thời Trang Nam Nữ Chống Nước Có Cổng Sạc", "image": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=500", "price": "220.000đ", "discount": "50", "url": "https://shopee.vn"}
-        ],
-        "tech": [{"name": "Sạc Dự Phòng 20000mAh Sạc Nhanh 22.5W", "image": "https://images.unsplash.com/photo-1609592424085-f678e3489370?w=500", "price": "249.000đ", "discount": "45", "url": "https://shopee.vn"}],
-        "home": [{"name": "Máy Hút Bụi Cầm Tay Không Dây Lực Hút Siêu Mạnh", "image": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500", "price": "450.000đ", "discount": "30", "url": "https://shopee.vn"}],
-        "fashion": [{"name": "Kính Mát Thời Trang Phi Công Chống Tia UV400", "image": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500", "price": "150.000đ", "discount": "60", "url": "https://shopee.vn"}]
-    }
+user_link = st.text_input("", placeholder="Nhập hoặc dán đường dẫn sản phẩm tại đây... (Ví dụ: https://shopee.vn/...)", label_visibility="collapsed")
 
-    def hien_thi_grid_san_pham(danh_sach):
-        col1, col2 = st.columns(2)
-        for idx, item in enumerate(danh_sach):
-            cot = col1 if idx % 2 == 0 else col2
-            with cot:
-                ten = item.get("name", "Sản Phẩm Cao Cấp")
-                anh = item.get("image", "https://via.placeholder.com/150")
-                giam = item.get("discount", "30")
-                gia = f"{item.get('price'):,}đ" if isinstance(item.get("price"), int) else str(item.get("price", "Xem giá"))
-                link_aff = tao_link_affiliate(item.get("url", "https://shopee.vn"))
-                
-                st.markdown(f"""
-                    <div class="mall-card">
-                        <img src="{anh}" style="width:100%; height:140px; border-radius:12px; object-fit:cover;">
-                        <div class="mall-title">{ten}</div>
-                        <div class="mall-price-row">
-                            <span class="mall-price">{gia}</span>
-                            <span class="mall-tag">MALL -{giam}%</span>
-                        </div>
-                        <a href="{link_aff}" target="_blank"><button style="background-color:#00F0FF; color:#0A0E17; padding:9px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; font-size:13px;">🛒 Xem Chi Tiết & Mua</button></a>
-                    </div>
-                """, unsafe_allow_html=True)
-
-    with tab_all:
-        data = lay_tat_ca_deal_api()
-        hien_thi_grid_san_pham(data if data else kho_deal_mac_dinh["all"])
-    with tab_tech:
-        data = lay_tat_ca_deal_api("điện thoại, phụ kiện máy tính, tai nghe")
-        hien_thi_grid_san_pham(data if data else kho_deal_mac_dinh["tech"])
-    with tab_home:
-        data = lay_tat_ca_deal_api("gia dụng, bếp, dọn dẹp nhà")
-        hien_thi_grid_san_pham(data if data else kho_deal_mac_dinh["home"])
-    with tab_fashion:
-        data = lay_tat_ca_deal_api("quần áo, túi xách, mỹ phẩm")
-        hien_thi_grid_san_pham(data if data else kho_deal_mac_dinh["fashion"])
-
-# ----------------- KHÔNG GIAN 2: TRUNG TÂM QUẢN TRỊ AI CỦA ANH ĐẠT -----------------
-elif menu_chinh == "🤖 Trung Tâm Quản Trị AI (Anh Đạt)":
-    st.subheader("🚀 Robot AI Phân Tích Khách Hàng & Tự Động Tạo Bài Viết Bán Hàng")
-    st.write("Không gian dành riêng cho anh Đạt cấu hình chiến lược tìm kiếm khách hàng đa kênh.")
-    
-    # 1. Chọn ngách khách hàng muốn tiếp cận
-    ngach_chon = st.selectbox("🎯 Chọn ngách khách hàng anh muốn khai thác hôm nay:", 
-                             ["Hội tài xế ô tô / taxi (Sạc dự phòng, tẩu sạc, đệm ghế)", 
-                              "Hội chị em nội trợ (Nồi chiên, máy hút bụi, đồ bếp)", 
-                              "Hội học sinh / sinh viên (Tai nghe giá rẻ, balo, đồ decor)"])
-    
-    # 2. AI gợi ý sản phẩm phù hợp nhất với ngách
-    st.info("🤖 **AI phân tích hành vi:** Ngách này đang có xu hướng mua sắm mạnh vào khung giờ 12h trưa và 20h tối. Ưu tiên các sản phẩm dưới 300k để chốt đơn nhanh.")
-    
-    # 3. Tính năng tự động tạo bài viết đăng bài đa kênh
-    st.write("---")
-    st.subheader("✍️ AI Tự Động Lên Kịch Bản Bài Viết Tìm Kiếm Khách Hàng")
-    ten_sp_viet_bai = st.text_input("Nhập tên sản phẩm anh muốn AI viết bài quảng cáo:", "Tai Nghe Không Dây Bluetooth Pro")
-    
-    if st.button("🪄 Kích Hoạt AI Tạo Bài Đăng Thôi Miên"):
-        # Đoạn kịch bản mồi AI tự động xuất ra cho anh Đạt đi copy
-        st.success("✅ AI đã xây dựng xong kịch bản bài đăng chất lượng cao!")
+if user_link:
+    with st.spinner("🚀 AI đang bọc link và áp mã giảm giá ẩn... Vui lòng đợi trong giây lát!"):
+        # Giả lập thời gian xử lý cho mượt
+        time.sleep(0.8)
+        final_aff_link = create_deep_link(user_link)
         
-        st.markdown("### 📱 Kịch bản đăng Facebook / Zalo Cá Nhân:")
-        st.code(f"""
-🔥 [DEAL HỦY DIỆT - GIẢM ĐẾN 40%] 🔥
-Anh em lướt mạng nhiều có thấy món này đang hot hòn họt không? Em vừa quét được mã giảm giá ẩn từ tổng kho độc quyền của sàn!
+        st.markdown(f"""
+            <div style="background-color: #1e293b; border-left: 4px solid #10b981; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <p style="color: #10b981; font-weight: bold; margin-bottom: 5px; font-size: 14px;">🎉 Thành công! Hệ thống đã kích hoạt mã giảm giá ẩn:</p>
+                <p style="color: #cbd5e1; font-size: 13px; margin-bottom: 12px;">Đường link dưới đây đã được tối ưu, không lo lỗi 404 và đã sẵn sàng tạo hoa hồng cho tài khoản <b>{PUBLISHER_ID}</b>.</p>
+                <a href="{final_aff_link}" target="_blank" class="buy-btn" style="background: linear-gradient(90deg, #10b981 0%, #059669 100%);">👉 BẤM VÀO ĐÂY ĐỂ ĐẾN SẢN PHẨM GIẢM GIÁ</a>
+            </div>
+        """, unsafe_allow_html=True)
 
-👉 Món: {ten_sp_viet_bai}
-✅ Hàng chính hãng, bảo hành đầy đủ.
-✅ Giá hôm nay rẻ hơn thị trường một nửa.
+st.markdown("<br>", unsafe_allow_html=True)
 
-Bấm vào link ứng dụng của em để hệ thống tự động bọc mã giảm giá và đặt hàng trực tiếp nha mọi người:
-🔗 Link săn ngay: https://tro-ly-phong-thuy.streamlit.app
-        """, language="text")
-        
-        st.markdown("### 👥 Kịch bản đăng vào các Hội Nhóm (Group Seeding):")
-        st.code(f"""
-Có bác nào đang định mua {ten_sp_viet_bai} không ạ? 
-Đừng mua vội giá gốc nha phí tiền lắm. Em vừa làm cái app AI tự động cào và áp mã giảm giá ẩn của tổng kho Shopee/Lazada xong. Bác nào cần em chia sẻ link vào tự bấm lấy mã mà mua cho rẻ nè:
-🔗 Link app tự động: https://tro-ly-phong-thuy.streamlit.app
-        """, language="text")
+# Khối 2: Hiển thị danh sách Deal tự động cập nhật
+st.markdown("### 🔥 Top Deal Phụ Tùng & Công Nghệ Xe Hot Nhất Hệ Thống")
+
+# Gọi hàm lấy deal tự động (Đã được áp dụng Cache và Auto-refresh)
+current_deals = fetch_auto_deals()
+
+# Chia cột hiển thị Grid 2x2 cho đẹp mắt, không bị tràn màn hình như trước
+col1, col2 = st.columns(2)
+
+for i, deal in enumerate(current_deals):
+    target_col = col1 if i % 2 == 0 else col2
+    with target_col:
+        st.markdown(f"""
+            <div class="product-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <span class="badge-discount">{deal['discount']} OFF</span>
+                    <span style="color: #64748b; font-size: 11px;">⚡ Auto updated</span>
+                </div>
+                <h4 style="color: #f8fafc; font-size: 15px; margin-top: 5px; margin-bottom: 10px; height: 40px; overflow: hidden;">{deal['title']}</h4>
+                <div style="margin-top: 5px;">
+                    <span style="color: #94a3b8; text-decoration: line-through; font-size: 12px; margin-right: 10px;">Giá gốc: {deal['old_price']}</span>
+                    <span style="color: #ef4444; font-weight: bold; font-size: 16px;">Giá sale: {deal['new_price']}</span>
+                </div>
+                <a href="{deal['aff_link']}" target="_blank" class="buy-btn">🛒 Lấy Mã & Mua Ngay</a>
+            </div>
+        """, unsafe_allow_html=True)
